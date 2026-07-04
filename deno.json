@@ -1,0 +1,20 @@
+{
+  "name": "@tangent/sem",
+  "version": "0.1.0",
+  "exports": "./src/index.js",
+  "publish": {
+    "include": [
+      "src/**/*.js",
+      "README.md",
+      "LICENSE"
+    ],
+    "exclude": [
+      "**/*.test.js"
+    ]
+  },
+  "imports": {
+    "@tangent.to/lina": "../lina/src/index.js",
+    "@tangent.to/opt": "../opt/src/index.js",
+    "@tangent.to/proba": "../proba/src/index.js"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "name": "@tangent.to/sem",
+  "version": "0.1.0",
+  "description": "Structural equation modeling for JavaScript (ESM): CFA, path analysis and full SEM with lavaan-style model syntax. semopy/lavaan-validated.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "browser": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "src",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "prepare": "npm run build:browser",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:semopy": "uv run --with semopy python3 tests_compare-to-semopy/compare_with_semopy.py",
+    "build:browser": "esbuild src/index.js --bundle --platform=browser --format=esm --target=es2020 --outfile=dist/index.js --sourcemap --minify --keep-names",
+    "jsr:publish": "deno publish --allow-dirty",
+    "jsr:publish:dry-run": "deno publish --dry-run --allow-dirty",
+    "deno:check": "deno check src/index.js"
+  },
+  "keywords": [
+    "sem",
+    "structural-equation-modeling",
+    "cfa",
+    "factor-analysis",
+    "path-analysis",
+    "lavaan",
+    "esm",
+    "browser"
+  ],
+  "author": "Essi Parent",
+  "license": "GPL-3.0",
+  "homepage": "https://github.com/tangent-to/sem",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tangent-to/sem"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "dependencies": {
+    "@tangent.to/lina": "file:../lina",
+    "@tangent.to/opt": "file:../opt",
+    "@tangent.to/proba": "file:../proba"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.11",
+    "vitest": "^1.6.0"
+  }
+}
