@@ -13,7 +13,19 @@ import { cholesky, identity, inv, matmul, solve, transpose } from '@tangent.to/l
 import { lbfgs, numericalHessian } from '@tangent.to/opt';
 import { chi2 as chi2Dist, normal } from '@tangent.to/proba';
 
-/** ML sample covariance (divisor N, lavaan's default rescaling) and means. */
+/**
+ * Sample covariance matrix and means from raw data.
+ *
+ * Uses the maximum-likelihood divisor N (lavaan's default rescaling), not the
+ * unbiased N - 1. Every value must be finite; missing or non-numeric data
+ * raises an Error, so impute or drop it first.
+ *
+ * @param {Array<Object>} data - Rows as objects, one field per variable
+ * @param {Array<string>} names - Variable names to include, in output order
+ * @returns {{S: Array<Array<number>>, means: Array<number>, n: number}} `S` is
+ *   the `names.length` square covariance matrix, `means` the per-variable
+ *   means, `n` the number of rows
+ */
 export function sampleCov(data, names) {
   const n = data.length;
   const p = names.length;
