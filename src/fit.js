@@ -10,7 +10,7 @@
  */
 
 import { cholesky, identity, inv, matmul, solve, transpose } from '@tangent.to/lina';
-import { lbfgs } from '@tangent.to/opt';
+import { lbfgs, numericalHessian } from '@tangent.to/opt';
 import { chi2 as chi2Dist, normal } from '@tangent.to/proba';
 
 /** ML sample covariance (divisor N, lavaan's default rescaling) and means. */
@@ -99,38 +99,6 @@ export function discrepancy(model, theta, S, logDetS) {
   return Number.isFinite(f) ? f : 1e10;
 }
 
-/** Central-difference Hessian of a scalar function. */
-function numericalHessian(f, x, h = 1e-4) {
-  const q = x.length;
-  const H = Array.from({ length: q }, () => new Array(q).fill(0));
-  const f0 = f(x);
-  const step = x.map((v) => h * Math.max(1, Math.abs(v)));
-  for (let i = 0; i < q; i++) {
-    for (let j = i; j < q; j++) {
-      const e = x.slice();
-      if (i === j) {
-        e[i] = x[i] + step[i];
-        const fp = f(e);
-        e[i] = x[i] - step[i];
-        const fm = f(e);
-        H[i][i] = (fp - 2 * f0 + fm) / (step[i] * step[i]);
-      } else {
-        e[i] = x[i] + step[i];
-        e[j] = x[j] + step[j];
-        const fpp = f(e);
-        e[j] = x[j] - step[j];
-        const fpm = f(e);
-        e[i] = x[i] - step[i];
-        const fmm = f(e);
-        e[j] = x[j] + step[j];
-        const fmp = f(e);
-        H[i][j] = (fpp - fpm - fmp + fmm) / (4 * step[i] * step[j]);
-        H[j][i] = H[i][j];
-      }
-    }
-  }
-  return H;
-}
 
 /**
  * Fit the model by maximum likelihood.
