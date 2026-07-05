@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# sem depends on @tangent.to/lina, /opt and /proba via file:../ specifiers,
+# so CI checks out and builds all three sibling repos before installing sem.
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: sem
+      - uses: actions/checkout@v4
+        with: { repository: tangent-to/lina, path: lina }
+      - uses: actions/checkout@v4
+        with: { repository: tangent-to/opt, path: opt }
+      - uses: actions/checkout@v4
+        with: { repository: tangent-to/proba, path: proba }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build sibling foundations (produce their dist for the file dependencies)
+        run: |
+          for pkg in lina opt proba; do (cd "$pkg" && npm install --no-fund --no-audit); done
+      - name: Install and test sem
+        run: |
+          npm install --no-fund --no-audit
+          npm run test:run
+        working-directory: sem
+
+  reference:
+    name: compare against lavaan (semopy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: sem
+      - uses: actions/checkout@v4
+        with: { repository: tangent-to/lina, path: lina }
+      - uses: actions/checkout@v4
+        with: { repository: tangent-to/opt, path: opt }
+      - uses: actions/checkout@v4
+        with: { repository: tangent-to/proba, path: proba }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: astral-sh/setup-uv@v5
+      - name: Build sibling foundations
+        run: |
+          for pkg in lina opt proba; do (cd "$pkg" && npm install --no-fund --no-audit); done
+      - run: npm install --no-fund --no-audit
+        working-directory: sem
+      - run: npm run test:semopy
+        working-directory: sem
