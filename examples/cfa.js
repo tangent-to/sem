@@ -19,7 +19,8 @@ published values.
 
 // %% [javascript]
 
-import { sem } from 'https://esm.sh/@tangent.to/sem';
+import * as __lib from 'https://esm.sh/@tangent.to/sem';
+const sem = __lib.sem;
 
 // The Holzinger-Swineford 1939 data: 301 seventh- and eighth-grade students,
 // nine cognitive test scores x1..x9. We parse the CSV into row objects, which
