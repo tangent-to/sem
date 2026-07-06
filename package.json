@@ -1,6 +1,6 @@
 {
   "name": "@tangent.to/sem",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Structural equation modeling for JavaScript (ESM): CFA, path analysis and full SEM with lavaan-style model syntax. semopy/lavaan-validated.",
   "type": "module",
   "main": "./dist/index.js",

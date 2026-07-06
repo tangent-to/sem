@@ -6,8 +6,10 @@ triggered by a version tag. Both registries get a provenance attestation.
 
 ## One-time setup
 
-- **`NPM_TOKEN`** — an npm **automation** access token, stored as a repository
-  (or `tangent-to` organization) Actions secret. Used by the npm job.
+- **npm trusted publisher (no token)** — on npmjs.com -> this package -> Settings
+  -> Trusted Publisher -> GitHub Actions: org `tangent-to`, this repo, workflow
+  file `release.yml`. The package must already exist; for a brand-new package do
+  one manual `npm publish --access public` first, then add the trusted publisher.
 - **JSR** needs no secret: the workflow authenticates over GitHub OIDC. The JSR
   package must exist and be linked to this GitHub repo (jsr.io → package →
   Settings → link the repository) once.
