@@ -5,8 +5,6 @@
 
 // %% [markdown]
 /*
-# Confirmatory factor analysis
-
 Structural equation modeling (SEM) fits models in which unobserved *latent*
 variables are measured by observed *indicators*. Confirmatory factor analysis
 (CFA) is the measurement half of SEM: you name the latent factors, state which
@@ -405,6 +403,53 @@ reports for this model to the same precision.
 
 // %% [markdown]
 /*
+Each approximate-fit index has a conventional rule-of-thumb cutoff. The bars are
+the fitted values; the dashed line is the threshold; green means the value meets
+its cutoff, red means it misses. Incremental indices (CFI, TLI) should clear
+their line, residual indices (RMSEA, SRMR) should stay under it.
+*/
+
+// %% [javascript]
+
+const fitIndices = [
+  { index: 'CFI', value: result.fit.cfi, threshold: 0.95, higherIsBetter: true },
+  { index: 'TLI', value: result.fit.tli, threshold: 0.95, higherIsBetter: true },
+  { index: 'RMSEA', value: result.fit.rmsea, threshold: 0.06, higherIsBetter: false },
+  { index: 'SRMR', value: result.fit.srmr, threshold: 0.08, higherIsBetter: false },
+].map((d) => ({
+  ...d,
+  pass: d.higherIsBetter ? d.value >= d.threshold : d.value <= d.threshold,
+}));
+
+Plot.plot({
+  marginLeft: 70,
+  height: 240,
+  x: { domain: [0, 1], label: 'value (bar) vs rule-of-thumb cutoff (dashed)' },
+  fy: { label: null },
+  y: { axis: null },
+  color: {
+    domain: [true, false],
+    range: ['#2e7d32', '#c62828'],
+    legend: true,
+    label: 'meets cutoff',
+    tickFormat: (d) => (d ? 'yes' : 'no'),
+  },
+  marks: [
+    Plot.barX(fitIndices, { x: 'value', fy: 'index', fill: 'pass' }),
+    Plot.text(fitIndices, {
+      x: 'value',
+      fy: 'index',
+      text: (d) => d.value.toFixed(3),
+      textAnchor: 'start',
+      dx: 4,
+    }),
+    Plot.ruleX(fitIndices, { x: 'threshold', fy: 'index', strokeWidth: 2, strokeDasharray: '4 3' }),
+    Plot.ruleX([0]),
+  ],
+});
+
+// %% [markdown]
+/*
 ## Factor loadings
 
 The loadings (`op === '=~'`) are the regression weights of each indicator on
@@ -428,6 +473,49 @@ const loadings = result.estimates
   }));
 
 loadings;
+
+// %% [markdown]
+/*
+Standardizing each loading (multiplying by the factor SD and dividing by the
+model-implied indicator SD) puts every item on a 0-1 scale, so the marker
+indicators become comparable too. Faceting by factor shows the three
+measurement blocks: every indicator loads strongly on its own ability.
+*/
+
+// %% [javascript]
+
+const stdLoadings = result.estimates
+  .filter((e) => e.op === '=~')
+  .map((e) => {
+    const factorVar = result.estimates.find((v) => v.op === '~~' && v.lhs === e.lhs && v.rhs === e.lhs).est;
+    const residVar = result.estimates.find((v) => v.op === '~~' && v.lhs === e.rhs && v.rhs === e.rhs).est;
+    const impliedSd = Math.sqrt(e.est * e.est * factorVar + residVar);
+    return {
+      factor: e.lhs,
+      indicator: e.rhs,
+      std: (e.est * Math.sqrt(factorVar)) / impliedSd,
+    };
+  });
+
+Plot.plot({
+  marginLeft: 60,
+  x: { domain: [0, 1], label: 'standardized loading' },
+  y: { label: null },
+  fy: { label: 'factor' },
+  color: { legend: true, label: 'factor' },
+  marks: [
+    Plot.barX(stdLoadings, { x: 'std', y: 'indicator', fy: 'factor', fill: 'factor' }),
+    Plot.text(stdLoadings, {
+      x: 'std',
+      y: 'indicator',
+      fy: 'factor',
+      text: (d) => d.std.toFixed(2),
+      textAnchor: 'start',
+      dx: 4,
+    }),
+    Plot.ruleX([0]),
+  ],
+});
 
 // %% [markdown]
 /*
@@ -460,6 +548,47 @@ const factorCov = result.estimates
   });
 
 factorCov;
+
+// %% [markdown]
+/*
+The same correlations read most easily as a heatmap of the full 3x3 inter-factor
+matrix (diagonal fixed to 1). Darker cells are stronger relationships: visual
+pairs moderately with textual and speed, while textual and speed are the most
+weakly related pair.
+*/
+
+// %% [javascript]
+
+const factorList = result.latents;
+const factorCorr = (a, b) => {
+  if (a === b) return 1;
+  const cov = result.estimates.find(
+    (e) => e.op === '~~' && e.lhs !== e.rhs &&
+      ((e.lhs === a && e.rhs === b) || (e.lhs === b && e.rhs === a)),
+  ).est;
+  const varA = result.estimates.find((v) => v.op === '~~' && v.lhs === a && v.rhs === a).est;
+  const varB = result.estimates.find((v) => v.op === '~~' && v.lhs === b && v.rhs === b).est;
+  return cov / Math.sqrt(varA * varB);
+};
+const corrMatrix = factorList.flatMap((a) => factorList.map((b) => ({ a, b, r: factorCorr(a, b) })));
+
+Plot.plot({
+  marginLeft: 70,
+  width: 380,
+  height: 320,
+  x: { label: null },
+  y: { label: null },
+  color: { scheme: 'blues', domain: [0, 1], legend: true, label: 'correlation' },
+  marks: [
+    Plot.cell(corrMatrix, { x: 'b', y: 'a', fill: 'r', inset: 0.5 }),
+    Plot.text(corrMatrix, {
+      x: 'b',
+      y: 'a',
+      text: (d) => d.r.toFixed(2),
+      fill: (d) => (d.r > 0.6 ? 'white' : 'black'),
+    }),
+  ],
+});
 
 // %% [markdown]
 /*
