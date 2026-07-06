@@ -118,7 +118,14 @@ export function discrepancy(model, theta, S, logDetS) {
  * @param {Object} model - From buildModel (starts already set)
  * @param {Array<Array<number>>} S - Sample covariance (unbiased)
  * @param {number} n - Sample size
- * @returns {Object} Estimation results
+ * @returns {{estimates: Array<{lhs: string, op: string, rhs: string, est: number,
+ *   se: number|null, z: number|null, pvalue: number|null, free: boolean}>,
+ *   fit: {chisq: number, df: number, pvalue: number, baselineChisq: number,
+ *   baselineDf: number, cfi: number, tli: number, rmsea: number, srmr: number,
+ *   logLik: number, aic: number, bic: number, npar: number, n: number, fmin: number},
+ *   Sigma: Array<Array<number>>, theta: Array<number>, converged: boolean,
+ *   iterations: number}} Estimates table, fit measures, model-implied `Sigma`,
+ *   optimum `theta`, and optimiser status
  */
 export function estimate(model, S, n) {
   const p = model.p;

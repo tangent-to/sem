@@ -23,7 +23,16 @@ import { estimate, sampleCov } from './fit.js';
  * @param {Array<Array<number>>} [spec.cov] - Sample covariance (instead of data)
  * @param {number} [spec.n] - Sample size (required with cov)
  * @param {Array<string>} [spec.names] - Variable names (required with cov)
- * @returns {Object} {estimates, fit, Sigma, S, converged, summary()}
+ * @returns {{estimates: Array<{lhs: string, op: string, rhs: string, est: number,
+ *   se: number|null, z: number|null, pvalue: number|null, free: boolean}>,
+ *   fit: {chisq: number, df: number, pvalue: number, baselineChisq: number,
+ *   baselineDf: number, cfi: number, tli: number, rmsea: number, srmr: number,
+ *   logLik: number, aic: number, bic: number, npar: number, n: number, fmin: number},
+ *   Sigma: Array<Array<number>>, theta: Array<number>, converged: boolean,
+ *   iterations: number, S: Array<Array<number>>, variables: Array<string>,
+ *   latents: Array<string>, observed: Array<string>, summary: () => string}}
+ *   Fitted model: parameter estimates, fit measures, model-implied `Sigma`,
+ *   reordered sample covariance `S`, and a `summary()` text formatter
  */
 export function sem(syntax, spec = {}) {
   if (typeof syntax !== 'string' || !syntax.trim()) {
@@ -92,11 +101,15 @@ export function sem(syntax, spec = {}) {
   };
 }
 
-/** Alias: confirmatory factor analysis (same engine, reads better in code). */
+/**
+ * Alias: confirmatory factor analysis (same engine, reads better in code).
+ * @type {typeof sem}
+ */
 export const cfa = sem;
 
 export { parseModel } from './parse.js';
 export { buildModel } from './model.js';
 export { sampleCov } from './fit.js';
 
+/** Default export bundling the primary entry points ({@link sem}, {@link cfa}, {@link parseModel}). */
 export default { sem, cfa, parseModel };

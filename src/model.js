@@ -21,7 +21,11 @@
  *
  * @param {Array<Object>} rows - Output of parseModel
  * @param {Array<string>} observedNames - Observed variable names present in the data
- * @returns {Object} {variables, latents, observed, params, aIndex, sIndex, t, p}
+ * @returns {{variables: Array<string>, latents: Array<string>, observed: Array<string>,
+ *   params: Array<{lhs: string, op: '=~'|'~'|'~~', rhs: string, matrix: 'A'|'S',
+ *   row: number, col: number, free: boolean, value: number, start: number|null}>,
+ *   t: number, p: number}} RAM specification: variable ordering, the parameter
+ *   table (directed paths in `A`, (co)variances in `S`), total `t` and observed `p` counts
  */
 export function buildModel(rows, observedNames) {
   const latents = [];
