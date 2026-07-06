@@ -13,8 +13,8 @@
     ]
   },
   "imports": {
-    "@tangent.to/lina": "../lina/src/index.js",
-    "@tangent.to/opt": "../opt/src/index.js",
-    "@tangent.to/proba": "../proba/src/index.js"
+    "@tangent.to/lina": "jsr:@tangent/lina@^0.1.0",
+    "@tangent.to/opt": "jsr:@tangent/opt@^0.1.0",
+    "@tangent.to/proba": "jsr:@tangent/proba@^0.1.0"
   }
 }

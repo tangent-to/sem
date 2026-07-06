@@ -26,7 +26,8 @@
     "build:browser": "esbuild src/index.js --bundle --platform=browser --format=esm --target=es2020 --outfile=dist/index.js --sourcemap --minify --keep-names",
     "jsr:publish": "deno publish --allow-dirty",
     "jsr:publish:dry-run": "deno publish --dry-run --allow-dirty",
-    "deno:check": "deno check src/index.js"
+    "deno:check": "deno check src/index.js",
+    "version": "node scripts/sync-version.mjs && git add deno.json"
   },
   "keywords": [
     "sem",
@@ -49,9 +50,9 @@
     "node": ">=16.0.0"
   },
   "dependencies": {
-    "@tangent.to/lina": "file:../lina",
-    "@tangent.to/opt": "file:../opt",
-    "@tangent.to/proba": "file:../proba"
+    "@tangent.to/lina": "^0.1.0",
+    "@tangent.to/opt": "^0.1.0",
+    "@tangent.to/proba": "^0.1.0"
   },
   "devDependencies": {
     "esbuild": "^0.25.11",
