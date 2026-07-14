@@ -28,9 +28,15 @@ const sem = __lib.sem;
 // (preloaded in tangent notebooks) into row objects, the shape sem() expects
 // for spec.data. Loading real data from a URL is the normal, reproducible way
 // to start an analysis, and keeps the notebook readable.
+// Pinned to the v0.1.1 tag (not the mutable main branch) so the URL keeps
+// resolving to this exact CSV. d3 is preloaded in tangent notebooks.
 const dataUrl =
-  'https://raw.githubusercontent.com/tangent-to/sem/main/data/holzinger39.csv';
-const rows = d3.csvParse(await (await fetch(dataUrl)).text(), d3.autoType);
+  'https://raw.githubusercontent.com/tangent-to/sem/v0.1.1/data/holzinger39.csv';
+const res = await fetch(dataUrl);
+if (!res.ok) {
+  throw new Error(`Failed to fetch ${dataUrl}: ${res.status} ${res.statusText}`);
+}
+const rows = d3.csvParse(await res.text(), d3.autoType);
 const columns = rows.columns;
 
 ({

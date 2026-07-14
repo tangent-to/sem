@@ -3,10 +3,15 @@
  *
  * F_ML(theta) = log|Sigma| + tr(S Sigma^{-1}) - log|S| - p
  * minimized with @tangent.to/opt's L-BFGS (finite-difference gradients).
- * Standard errors come from the numerical Hessian of F_ML at the optimum:
- * acov(theta) = (2 / N) H^{-1}. The test statistic is T = (N - 1) F_ML
- * (Wishart likelihood, lavaan's default), with S the unbiased (N - 1)
- * sample covariance.
+ * Standard errors come from the expected (Fisher) information matrix at the
+ * optimum, acov(theta) = I^{-1} / N; the observed numerical Hessian,
+ * acov(theta) = (2 / N) H^{-1}, is the fallback when I is singular. The test
+ * statistic is T = N * F_ML with S the maximum-likelihood (divisor-N) sample
+ * covariance — lavaan's default normal-theory statistic. This reproduces
+ * lavaan's published chi-square exactly (e.g. 85.306, df 24, on the classic
+ * Holzinger-Swineford three-factor model at N = 301). Because F_ML is
+ * invariant to a global rescaling of S, using N (rather than N - 1) as the
+ * divisor and the multiplier are what pin T to lavaan's value.
  */
 
 import { cholesky, identity, inv, matmul, solve, transpose } from '@tangent.to/lina';
@@ -116,7 +121,8 @@ export function discrepancy(model, theta, S, logDetS) {
  * Fit the model by maximum likelihood.
  *
  * @param {Object} model - From buildModel (starts already set)
- * @param {Array<Array<number>>} S - Sample covariance (unbiased)
+ * @param {Array<Array<number>>} S - Sample covariance, maximum-likelihood
+ *   (divisor-N) scaling, as produced by {@link sampleCov}
  * @param {number} n - Sample size
  * @returns {{estimates: Array<{lhs: string, op: string, rhs: string, est: number,
  *   se: number|null, z: number|null, pvalue: number|null, free: boolean}>,
@@ -199,8 +205,11 @@ export function estimate(model, S, n) {
     }
   }
 
-  // Test statistic, lavaan's default convention: T = N * F_ML
-  // (F evaluated on the unbiased S; empirically matches lavaan exactly)
+  // Test statistic, lavaan's default (normal-theory) convention: T = N * F_ML,
+  // with F evaluated on the ML (divisor-N) sample covariance S. Empirically
+  // reproduces lavaan's published chi-square exactly (85.306 on
+  // Holzinger-Swineford). F_ML is scale-invariant, so it is the multiplier N
+  // (not N - 1) that pins T to lavaan; using N - 1 would deflate it to ~85.02.
   const T = n * fmin;
   const pValue = dfModel > 0 ? 1 - chi2Dist.cdf(T, { k: dfModel }) : 1;
 

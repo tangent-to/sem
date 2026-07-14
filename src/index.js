@@ -20,7 +20,11 @@ import { estimate, sampleCov } from './fit.js';
  *   parameter)
  * @param {Object} spec
  * @param {Array<Object>} [spec.data] - Rows as objects (column per variable)
- * @param {Array<Array<number>>} [spec.cov] - Sample covariance (instead of data)
+ * @param {Array<Array<number>>} [spec.cov] - Sample covariance (instead of
+ *   data), maximum-likelihood (divisor-N) scaling, matching what `sampleCov`
+ *   produces and the returned `S`. If you hold an unbiased (divisor-(N-1))
+ *   covariance — R's `cov()`, most stats packages — rescale it by (n-1)/n
+ *   first so the chi-square, log-likelihood, AIC and BIC match lavaan.
  * @param {number} [spec.n] - Sample size (required with cov)
  * @param {Array<string>} [spec.names] - Variable names (required with cov)
  * @returns {{estimates: Array<{lhs: string, op: string, rhs: string, est: number,
