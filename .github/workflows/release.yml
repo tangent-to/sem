@@ -59,3 +59,27 @@ jobs:
         run: deno cache --minimum-dependency-age=0 src/index.js
       - name: Publish
         run: deno publish --allow-dirty
+
+  github-release:
+    name: Create GitHub Release
+    needs: [npm, jsr]
+    # workflow_dispatch can fire from a branch, where github.ref_name is not a
+    # version tag. Only tag pushes should produce a release entry.
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # creating a release needs more than the workflow default
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # --generate-notes walks back to the previous tag
+      - name: Create the release (skip if it already exists)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG already has a release — skipping."
+          else
+            gh release create "$TAG" --title "$TAG" --generate-notes --verify-tag
+          fi
