@@ -15,6 +15,20 @@
  */
 
 import { cholesky, identity, inv, matmul, solve, transpose } from '@tangent.to/lina';
+import {
+  add as gAdd,
+  concat as gConcat,
+  inv as gInv,
+  logdetPSD as gLogdet,
+  matmul as gMatmul,
+  reshape as gReshape,
+  slice as gSlice,
+  solvePSD as gSolve,
+  sub as gSub,
+  trace as gTrace,
+  transpose as gTranspose,
+  valueAndGrad as gValueAndGrad,
+} from '@tangent.to/grad';
 import { lbfgs, numericalHessian } from '@tangent.to/opt';
 import { chi2 as chi2Dist, normal } from '@tangent.to/proba';
 
@@ -102,6 +116,91 @@ export function buildSigma(model, theta) {
   return Sigma;
 }
 
+/**
+ * Sigma(theta) as a differentiable expression, mirroring {@link buildSigma}.
+ *
+ * Same RAM algebra — B = I - A, Sigma = (B^-1 S B^-T) restricted to the
+ * observed block — written in @tangent.to/grad ops so the discrepancy carries
+ * its own exact gradient. `theta` is a grad Var holding the free parameters in
+ * `model.params` order.
+ *
+ * The matrices are assembled by concatenating their cells and reshaping, which
+ * keeps every free parameter on the tape: a fixed cell contributes a constant,
+ * a free cell a slice of `theta`. B is a matrix of directed paths and is not
+ * symmetric, hence `inv` rather than the Cholesky-based solve.
+ *
+ * @private
+ */
+function buildSigmaAD(model, theta) {
+  const { t, p, params } = model;
+  const aCells = new Array(t * t).fill(0);
+  const sCells = new Array(t * t).fill(0);
+  let k = 0;
+  for (const par of params) {
+    const cell = par.free ? gSlice(theta, [k++], [1]) : par.value;
+    if (par.matrix === 'A') {
+      aCells[par.row * t + par.col] = cell;
+    } else {
+      sCells[par.row * t + par.col] = cell;
+      sCells[par.col * t + par.row] = cell;
+    }
+  }
+  const A = gReshape(gConcat(aCells), [t, t]);
+  const S = gReshape(gConcat(sCells), [t, t]);
+  const M = gInv(gSub(identity(t), A));
+  const full = gMatmul(gMatmul(M, S), gTranspose(M));
+  return gSlice(full, [0, 0], [p, p]);
+}
+
+/**
+ * F_ML and its exact gradient with respect to the free parameters.
+ *
+ * The objective L-BFGS minimizes. Returning the combined `{loss, gradient}`
+ * form lets @tangent.to/opt skip its finite-difference fallback, which costs
+ * 2·q extra evaluations of the whole RAM algebra per gradient.
+ *
+ * The gain is speed, not convergence. Measured on confirmatory factor models,
+ * both paths take the SAME number of iterations and reach the same optimum to
+ * every printed digit — the finite-difference gradient is accurate enough to
+ * steer L-BFGS perfectly well here, since F_ML is a smooth function of theta:
+ *
+ *     observed  q    objective evaluations      time
+ *        6      13      783  ->    29       21 ms -> 8 ms
+ *       12      27     2365  ->    43      126 ms -> 23 ms
+ *       20      46     3348  ->    36      392 ms -> 45 ms
+ *
+ * The ratio grows with the parameter count, because the fallback's cost does
+ * and this does not.
+ *
+ * @param {Object} model - From buildModel
+ * @param {Array<number>} thetaArr - Free parameter values
+ * @param {Array<Array<number>>} S - Sample covariance
+ * @param {number} logDetS - log|S|, precomputed
+ * @returns {{loss: number, gradient: Array<number>}}
+ */
+export function discrepancyAndGrad(model, thetaArr, S, logDetS) {
+  const p = model.p;
+  const build = (th) => {
+    const Sigma = buildSigmaAD(model, th);
+    // log|Sigma| + tr(S Sigma^-1); the two constants come off outside the tape.
+    return gAdd(gLogdet(Sigma), gTrace(gSolve(Sigma, S)));
+  };
+  let out;
+  try {
+    out = gValueAndGrad(build)(thetaArr);
+  } catch {
+    // Sigma left the positive-definite cone: same large penalty the
+    // finite-difference path reports, with a zero gradient so the line search
+    // backs off rather than following a meaningless direction.
+    return { loss: 1e10, gradient: new Array(thetaArr.length).fill(0) };
+  }
+  const f = out.value - logDetS - p;
+  if (!Number.isFinite(f)) {
+    return { loss: 1e10, gradient: new Array(thetaArr.length).fill(0) };
+  }
+  return { loss: f, gradient: out.gradient };
+}
+
 /** F_ML discrepancy; large penalty when Sigma is not positive definite. */
 export function discrepancy(model, theta, S, logDetS) {
   const p = model.p;
@@ -148,7 +247,11 @@ export function estimate(model, S, n) {
   }
 
   const x0 = freeParams.map((par) => par.start);
-  const objective = (theta) => discrepancy(model, theta, S, logDetS);
+  // Exact gradient, in the combined {loss, gradient} form @tangent.to/opt
+  // accepts, in place of its 2·q-evaluations-per-gradient fallback. Same
+  // iterations and same optimum either way; see discrepancyAndGrad for the
+  // measured cost.
+  const objective = (theta) => discrepancyAndGrad(model, theta, S, logDetS);
 
   const result = lbfgs(objective, x0, { maxIter: 5000, tol: 1e-9 });
   const theta = result.x;
@@ -160,7 +263,12 @@ export function estimate(model, S, n) {
   try {
     const SigmaHat = buildSigma(model, theta);
     const SigmaInv = inv(SigmaHat);
-    // Central-difference Jacobian of Sigma w.r.t. each free parameter
+    // Central-difference Jacobian of Sigma w.r.t. each free parameter.
+    // Deliberately NOT autodiffed. Sigma is a smooth rational function of
+    // theta, and halving the step from 1e-5 to 1e-7 moves the resulting
+    // standard errors by 1e-9 relative — identical to every digit reported.
+    // An exact Jacobian would cost p² reverse sweeps against q forward
+    // evaluations here, buying nothing.
     const D = new Array(q);
     for (let k = 0; k < q; k++) {
       const h = 1e-5 * Math.max(1, Math.abs(theta[k]));

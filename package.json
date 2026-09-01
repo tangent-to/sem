@@ -50,6 +50,7 @@
     "node": ">=16.0.0"
   },
   "dependencies": {
+    "@tangent.to/grad": "^0.1.0",
     "@tangent.to/lina": "^0.1.0",
     "@tangent.to/opt": "^0.1.0",
     "@tangent.to/proba": "^0.1.0"
