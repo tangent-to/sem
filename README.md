@@ -6,7 +6,9 @@ ecosystem — part of the [tangent suite](https://github.com/tangent-to),
 built entirely on its validated numeric leaves:
 [lina](https://github.com/tangent-to/lina) (linear algebra),
 [opt](https://github.com/tangent-to/opt) (L-BFGS),
-[proba](https://github.com/tangent-to/proba) (test distributions).
+[grad](https://github.com/tangent-to/grad) (exact gradients for the ML
+discrepancy), [proba](https://github.com/tangent-to/proba) (test
+distributions).
 
 - **Confirmatory factor analysis**, **path analysis**, and **full SEM**
   (latent regressions, correlated residuals)
