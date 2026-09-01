@@ -55,10 +55,19 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      # Install npm dependencies into node_modules so deno can resolve the bare
+      # npm imports in src/ when caching and publishing. JSR does not vendor
+      # them, but publish-time resolution needs them present. Missing this is
+      # what failed the v0.2.0 JSR job: adding @tangent.to/grad gave deno a
+      # bare specifier it could not resolve — "Could not resolve
+      # '@tangent.to/grad', but found it in a package.json" — while the npm
+      # half published fine, leaving the two registries out of step.
+      - name: Install npm dependencies
+        run: npm install --no-audit --no-fund --ignore-scripts
       # Vouch for the resolved dependency graph with the supply-chain cooldown
       # disabled, so a package can be released the same day as an intra-suite
-      # dependency it was just published alongside. No-op for dependency-free
-      # leaves. Writes an (untracked) deno.lock, hence --allow-dirty below.
+      # dependency it was just published alongside. Writes an (untracked)
+      # deno.lock, hence --allow-dirty below.
       - name: Resolve dependencies (bypass cooldown for intra-suite deps)
         run: deno cache --minimum-dependency-age=0 src/index.js
       # Idempotent like the npm job: a Release run can half-succeed (JSR
